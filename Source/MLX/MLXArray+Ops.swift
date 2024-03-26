@@ -817,7 +817,17 @@ extension MLXArray {
         MLXArray(mlx_broadcast_to(ctx, shape, shape.count, stream.ctx))
     }
 
-    func scattered(
+    // varaiant with [Int32] argument
+    func reshaped(_ newShape: [Int32], stream: StreamOrDevice = .default) -> MLXArray {
+        MLXArray(mlx_reshape(ctx, newShape, newShape.count, stream.ctx))
+    }
+
+}
+
+// MARK: - Neo Changes
+
+extension MLXArray {
+    public func scattered(
         indices: [MLXArray], updates: MLXArray, axes: [Int32], stream: StreamOrDevice = .default
     ) -> MLXArray {
         let vector_array = new_mlx_vector_array(indices)
@@ -826,11 +836,14 @@ extension MLXArray {
         return MLXArray(mlx_scatter(ctx, vector_array, updates.ctx, axes, axes.count, stream.ctx))
     }
 
-    // varaiant with [Int32] argument
-    func reshaped(_ newShape: [Int32], stream: StreamOrDevice = .default) -> MLXArray {
-        MLXArray(mlx_reshape(ctx, newShape, newShape.count, stream.ctx))
-    }
+    public func scatterAdded(
+        indices: [MLXArray], updates: MLXArray, axes: [Int32], stream: StreamOrDevice = .default
+    ) -> MLXArray {
+        let vector_array = new_mlx_vector_array(indices)
+        defer { mlx_free(vector_array) }
 
+        return MLXArray(mlx_scatter_add(ctx, vector_array, updates.ctx, axes, axes.count, stream.ctx))
+    }
 }
 
 // MARK: - Public Functions
