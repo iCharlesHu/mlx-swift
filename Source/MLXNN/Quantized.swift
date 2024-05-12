@@ -255,3 +255,38 @@ open class QuantizedLinear: Linear {
         model.update(modules: updates)
     }
 }
+
+public final class QuantizedEmbedding: Embedding {
+
+    private let bits: Int
+    private let groupSize: Int
+    private let scales: MLXArray
+    private let biases: MLXArray
+
+    public init(embeddingCount: Int, dimensions: Int, groupSize: Int = 64, bits: Int = 4) {
+        self.groupSize = groupSize
+        self.bits = bits
+        // Initialize the quantized weight
+        let scale = Double(1.0 / Double(dimensions)).squareRoot()
+        let initialWeights = normal([embeddingCount, dimensions], scale: Float(scale))
+        let (weights, scales, biases) = MLX.quantized(initialWeights, groupSize: groupSize, bits: bits)
+        self.scales = scales
+        self.biases = biases
+        super.init(weight: weights)
+        // Freeze the model's parameters
+        self.freeze()
+    }
+
+    public override func callAsFunction(_ x: MLXArray) -> MLXArray {
+        let s = x.shape
+        let flattened = x.flattened()
+        let output = MLX.dequantized(
+            self.weight[flattened],
+            scales: self.scales[flattened],
+            biases: self.biases[flattened],
+            groupSize: self.groupSize,
+            bits: self.bits
+        )
+        return output.reshaped(s + [-1])
+    }
+}
