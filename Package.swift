@@ -52,6 +52,9 @@ let package = Package(
                 "mlx/mlx/backend/common/compiled_nocpu.cpp",
                 "mlx/mlx/backend/common/compiled_cpu.cpp",
 
+                "mlx/mlx/io/no_gguf.cpp",
+                "mlx/mlx/io/no_safetensors.cpp",
+
                 // mlx files that are not part of the build
                 "mlx/ACKNOWLEDGMENTS.md",
                 "mlx/CMakeLists.txt",
