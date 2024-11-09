@@ -101,6 +101,52 @@ open class QuantizedEmbedding: Embedding {
             x, weight, scales: scales, biases: biases, transpose: true, groupSize: groupSize,
             bits: bits)
     }
+
+    /// Replace ``Embedding`` layers with `QuantizedEmbedding`.
+    ///
+    /// Please see the disucssion in ``Linear`` for considerations when replacing layers.
+    ///
+    /// - Parameters:
+    ///   - model: the model to update
+    ///   - groupSize: The group size to use for the quantized weight
+    ///   - bits: The bit width to use for the quantized weight
+    ///   - predicate: optional predicate for identifying layers to change -- default finds all `Embedding` layers
+    static public func quantize(
+        model: Module,
+        groupSize: Int = 64,
+        bits: Int = 4,
+        predicate: (Embedding) -> Bool = { _ in true }
+    ) {
+        let updates = model.leafModules().compactMapValues { m -> Module? in
+            guard let embedding = m as? Embedding else { return nil }
+            if predicate(embedding) {
+                return Self.from(embedding: embedding, groupSize: groupSize, bits: bits)
+            } else {
+                return nil
+            }
+        }
+
+        _ = model.update(modules: updates)
+    }
+
+    /// Returns a QuantizedEmbedding layer that applies the same embedding up to the quantization error.
+    ///
+    /// - Parameters:
+    ///   - linear: a `Linear` layer
+    ///   - groupSize: The group size to use for the quantized weight
+    ///   - bits: The bit width to use for the quantized weight
+    /// - Returns: a new `QuantizedLayer`
+    static public func from(
+        embedding: Embedding,
+        groupSize: Int = 64,
+        bits: Int = 4
+    ) -> QuantizedEmbedding {
+        return QuantizedEmbedding(
+            weight: embedding.weight,
+            groupSize: groupSize,
+            bits: bits
+        )
+    }
 }
 
 /// Applies an affine transformation to the input using a quantized weight matrix.
@@ -253,100 +299,5 @@ open class QuantizedLinear: Linear {
         }
 
         model.update(modules: updates)
-    }
-}
-
-public final class QuantizedEmbedding: Embedding {
-
-    private let bits: Int
-    private let groupSize: Int
-    private let scales: MLXArray
-    private let biases: MLXArray
-
-    public init(embeddingCount: Int, dimensions: Int, groupSize: Int = 64, bits: Int = 4) {
-        self.groupSize = groupSize
-        self.bits = bits
-        // Initialize the quantized weight
-        let scale = Double(1.0 / Double(dimensions)).squareRoot()
-        let initialWeights = normal([embeddingCount, dimensions], scale: Float(scale))
-        let (weights, scales, biases) = MLX.quantized(initialWeights, groupSize: groupSize, bits: bits)
-        self.scales = scales
-        self.biases = biases
-        super.init(weight: weights)
-        // Freeze the model's parameters
-        self.freeze()
-    }
-
-    public override func callAsFunction(_ x: MLXArray) -> MLXArray {
-        let s = x.shape
-        let flattened = x.flattened()
-        let output = MLX.dequantized(
-            self.weight[flattened],
-            scales: self.scales[flattened],
-            biases: self.biases[flattened],
-            groupSize: self.groupSize,
-            bits: self.bits
-        )
-        return output.reshaped(s + [-1])
-    }
-
-    /// Initialize a ``QuantizedEmbedding`` with non-quantized weights and bias.
-    public init(weight: MLXArray, groupSize: Int = 64, bits: Int = 4) {
-        self.groupSize = groupSize
-        self.bits = bits
-
-        let (quantizedWeight, scales, biases) = MLX.quantized(
-            weight, groupSize: groupSize, bits: bits)
-
-        self.scales = scales
-        self.biases = biases
-        super.init(weight: quantizedWeight)
-        self.freeze()
-    }
-
-    /// Returns a QuantizedEmbedding layer that applies the same embedding up to the quantization error.
-    ///
-    /// - Parameters:
-    ///   - linear: a `Linear` layer
-    ///   - groupSize: The group size to use for the quantized weight
-    ///   - bits: The bit width to use for the quantized weight
-    /// - Returns: a new `QuantizedLayer`
-    static public func from(
-        embedding: Embedding,
-        groupSize: Int = 64,
-        bits: Int = 4
-    ) -> QuantizedEmbedding {
-        return QuantizedEmbedding(
-            weight: embedding.weight,
-            groupSize: groupSize,
-            bits: bits
-        )
-    }
-
-    /// Replace ``Embedding`` layers with `QuantizedEmbedding`.
-    ///
-    /// Please see the disucssion in ``Linear`` for considerations when replacing layers.
-    ///
-    /// - Parameters:
-    ///   - model: the model to update
-    ///   - groupSize: The group size to use for the quantized weight
-    ///   - bits: The bit width to use for the quantized weight
-    ///   - predicate: optional predicate for identifying layers to change -- default finds all `Embedding` layers
-    static public func quantize(
-        model: Module,
-        groupSize: Int = 64,
-        bits: Int = 4,
-        predicate: (Embedding) -> Bool = { _ in true }
-    ) {
-        let updates = model.leafModules().compactMapValues { m -> Module? in
-            guard let embedding = m as? Embedding else { return nil }
-            if predicate(embedding) {
-                return Self.from(embedding: embedding, groupSize: groupSize, bits: bits)
-            } else {
-                return nil
-            }
-        }
-
-        _ = model.update(modules: updates)
     }
 }

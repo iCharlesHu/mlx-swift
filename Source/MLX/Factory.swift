@@ -622,6 +622,34 @@ public func full(_ shape: [Int], values: ScalarOrArray, stream: StreamOrDevice =
     return MLXArray(result)
 }
 
+/// Generates ranges of numbers.
+/// Generate numbers in the half-open interval `[start, stop)`
+/// in increments of `step`.
+///
+/// - Parameters:
+///     - start: starting value
+///     - stop: stopping value
+///     - step: increment value
+///     - type: specifies the data type of the output array
+///     - stream: stream or device to evaluate on
+public func arange<T: HasDType>(
+    start: Double,
+    stop: Double,
+    step: Double,
+    type: T.Type,
+    stream: StreamOrDevice = .default
+) -> MLXArray {
+    return MLXArray(
+        mlx_arange(
+            start,
+            stop,
+            step,
+            T.dtype.cmlxDtype,
+            stream.ctx
+        )
+    )
+}
+
 /// Create a square identity matrix.
 ///
 /// Example:
