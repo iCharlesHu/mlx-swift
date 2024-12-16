@@ -1135,7 +1135,9 @@ extension MLXArray {
 
     // varaiant with [Int32] argument
     func reshaped(_ newShape: [Int32], stream: StreamOrDevice = .default) -> MLXArray {
-        MLXArray(mlx_reshape(ctx, newShape, newShape.count, stream.ctx))
+        var result = mlx_array_new()
+        mlx_reshape(&result, ctx, newShape, newShape.count, stream.ctx)
+        return MLXArray(result)
     }
 
 }
@@ -1154,20 +1156,15 @@ extension MLXArray {
         return MLXArray(result)
     }
 
-    // varaiant with [Int32] argument
-    func reshaped(_ newShape: [Int32], stream: StreamOrDevice = .default) -> MLXArray {
-        var result = mlx_array_new()
-        mlx_reshape(&result, ctx, newShape, newShape.count, stream.ctx)
-        return MLXArray(result)
-    }
-
     public func scatterAdded(
         indices: [MLXArray], updates: MLXArray, axes: [Int32], stream: StreamOrDevice = .default
     ) -> MLXArray {
         let vector_array = new_mlx_vector_array(indices)
-        defer { mlx_free(vector_array) }
+        defer { mlx_vector_array_free(vector_array) }
 
-        return MLXArray(mlx_scatter_add(ctx, vector_array, updates.ctx, axes, axes.count, stream.ctx))
+        var result = mlx_array_new()
+        mlx_scatter_add(&result, ctx, vector_array, updates.ctx, axes, axes.count, stream.ctx)
+        return MLXArray(result)
     }
 }
 

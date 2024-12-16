@@ -639,15 +639,9 @@ public func arange<T: HasDType>(
     type: T.Type,
     stream: StreamOrDevice = .default
 ) -> MLXArray {
-    return MLXArray(
-        mlx_arange(
-            start,
-            stop,
-            step,
-            T.dtype.cmlxDtype,
-            stream.ctx
-        )
-    )
+    var result = mlx_array_new()
+    mlx_arange(&result, start, stop, step, T.dtype.cmlxDtype, stream.ctx)
+    return MLXArray(result)
 }
 
 /// Create a square identity matrix.
