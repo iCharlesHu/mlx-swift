@@ -437,6 +437,28 @@ extension MLXArray {
 
 }
 
+/// Generates ranges of numbers.
+/// Generate numbers in the half-open interval `[start, stop)`
+/// in increments of `step`.
+///
+/// - Parameters:
+///     - start: starting value
+///     - stop: stopping value
+///     - step: increment value
+///     - type: specifies the data type of the output array
+///     - stream: stream or device to evaluate on
+public func arange<T: HasDType>(
+    start: Double,
+    stop: Double,
+    step: Double,
+    type: T.Type,
+    stream: StreamOrDevice = .default
+) -> MLXArray {
+    var result = mlx_array_new()
+    mlx_arange(&result, start, stop, step, T.dtype.cmlxDtype, stream.ctx)
+    return MLXArray(result)
+}
+
 /// Construct an array of zeros.
 ///
 /// Example:

@@ -111,7 +111,7 @@ let package = Package(
                 .define("ACCELERATE_NEW_LAPACK"),
                 .define("_METAL_"),
                 .define("SWIFTPM_BUNDLE", to: "\"mlx-swift_Cmlx\""),
-                .define("METAL_PATH", to: "\"default.metallib\""),
+                .define("METAL_PATH", to: "\"/opt/neo/metal/default.metallib\""),
             ],
             linkerSettings: [
                 .linkedFramework("Foundation"),
